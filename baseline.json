@@ -1,0 +1,23 @@
+{
+  "results": [
+    {
+      "command": "./target/release/brc",
+      "mean": 96.6369200559,
+      "stddev": null,
+      "median": 96.6369200559,
+      "user": 87.68408762,
+      "system": 5.12885464,
+      "min": 96.6369200559,
+      "max": 96.6369200559,
+      "times": [
+        96.6369200559
+      ],
+      "memory_usage_byte": [
+        4157440
+      ],
+      "exit_codes": [
+        0
+      ]
+    }
+  ]
+}

@@ -7,16 +7,25 @@ struct Stats {
     max: f64,
     total: f64,
     count: i32,
+    average: f64,
 }
 
 fn main() -> std::io::Result<()> {
-    let cities = get_stats("source-1brc/measurements.txt".to_string())?;
-    for (city, stats) in &cities {
-        let avg = stats.total / stats.count as f64;
-        println!("{}={:.1}/{:.1}/{:.1}", city, stats.min, avg, stats.max);
+    let args: Vec<String> = std::env::args().collect();
+
+    if args.len() != 1 {
+        panic!("missing args");
     }
-    println!("number of cities={}", cities.len());
-    Ok(())
+
+    if args[1] == "1b" {
+        get_stats("source-1brc/measurements.txt".to_string())?;
+        return Ok(());
+    } else if args[1] == "1m" {
+        get_stats("source-1brc/1m-measurements.txt".to_string())?;
+        return Ok(());
+    }
+
+    panic!("Bad args");
 }
 
 fn get_stats(path: String) -> std::io::Result<HashMap<String, Stats>> {
@@ -35,6 +44,7 @@ fn get_stats(path: String) -> std::io::Result<HashMap<String, Stats>> {
             stats.total += temp;
             stats.max = stats.max.max(temp);
             stats.min = stats.min.min(temp);
+            stats.average = stats.total / stats.count as f64;
         } else {
             cities.insert(
                 city.to_string(),
@@ -43,11 +53,13 @@ fn get_stats(path: String) -> std::io::Result<HashMap<String, Stats>> {
                     max: temp,
                     count: 1,
                     total: temp,
+                    average: 0 as f64,
                 },
             );
         }
     }
 
+    println!("number of cities={}", cities.len());
     Ok(cities)
 }
 
@@ -64,5 +76,6 @@ mod tests {
         assert_eq!(sydney.max, 25.0);
         assert_eq!(sydney.total, 64.0);
         assert_eq!(sydney.count, 3);
+        assert_eq!(sydney.average, 21.33);
     }
 }
