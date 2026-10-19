@@ -1,0 +1,5 @@
+Sydney;21.0
+Melbourne;15.5
+Sydney;25.0
+Melbourne;10.0
+Sydney;18.0
