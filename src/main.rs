@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Read};
 
 struct Stats {
     min: f64,
@@ -28,38 +28,78 @@ fn main() -> std::io::Result<()> {
 }
 
 fn get_stats(path: String) -> std::io::Result<()> {
-    let file = File::open(path)?;
-    let reader = BufReader::new(file);
-
+    let mut file = File::open(path)?;
     let mut cities: HashMap<String, Stats> = HashMap::new();
 
-    for line in reader.lines() {
-        let line = line?;
-        let mut parts = line.split(';');
-        let city = parts.next().unwrap_or("");
-        let temp: f64 = parts.next().unwrap_or("").parse().unwrap();
+    const BUFFER_SIZE: usize = 2 * 1024 * 1024;
+    let mut buffer = vec![0u8; BUFFER_SIZE];
+    let mut end: usize = 0;
 
-        if let Some(e) = cities.get_mut(city) {
-            e.count += 1;
-            e.total += temp;
-            e.max = e.max.max(temp);
-            e.min = e.min.min(temp);
-        } else {
-            cities.insert(
-                city.to_string(),
-                Stats {
-                    min: temp,
-                    max: temp,
-                    count: 1,
-                    total: temp,
-                },
-            );
+    loop {
+        // Read into the unused portion of the buffer.
+        let bytes_read = file.read(&mut buffer[end..])?;
+
+        if bytes_read == 0 {
+            // EOF: process any remaining unterminated line.
+            if end > 0 {
+                let line_end = end;
+                process_line(&buffer[..line_end], &mut cities);
+            }
+
+            break;
+        }
+
+        end += bytes_read;
+
+        let mut start: usize = 0;
+
+        // Process every complete line.
+        while let Some(delim_idx) = buffer[start..end].iter().position(|&b| b == b'\n') {
+            let line_end = start + delim_idx;
+
+            process_line(&buffer[start..line_end], &mut cities);
+
+            // Move to the next line.
+            start = line_end + 1;
+        }
+
+        // Shift incomplete line bytes to the beginning.
+        if start > 0 {
+            buffer.copy_within(start..end, 0);
+            end -= start;
         }
     }
 
-    for k in cities {
-        print!("{} average temp {}", k.0, k.1.total / k.1.count as f64);
+    for (city, stats) in cities {
+        println!("{} average temp {}", city, stats.total / stats.count as f64);
     }
 
     Ok(())
+}
+
+fn process_line(line: &[u8], cities: &mut HashMap<String, Stats>) {
+    let semi = line.iter().position(|&b| b == b';').unwrap();
+
+    let city = std::str::from_utf8(&line[..semi]).unwrap();
+    let temp: f64 = std::str::from_utf8(&line[semi + 1..])
+        .unwrap()
+        .parse()
+        .unwrap();
+
+    if let Some(e) = cities.get_mut(city) {
+        e.count += 1;
+        e.total += temp;
+        e.max = e.max.max(temp);
+        e.min = e.min.min(temp);
+    } else {
+        cities.insert(
+            city.to_string(),
+            Stats {
+                min: temp,
+                max: temp,
+                count: 1,
+                total: temp,
+            },
+        );
+    }
 }
